@@ -4,7 +4,7 @@
 
 #include "signupeoseos.hpp"
 using namespace std;
-using namespace eosio::chain;
+//using namespace eosio::chain;
 
 void signupeoseos::transfer(account_name from, account_name to, asset quantity, string memo) {
     if (from == _self || to != _self) {
@@ -15,8 +15,8 @@ void signupeoseos::transfer(account_name from, account_name to, asset quantity, 
     eosio_assert(quantity.is_valid(), "Invalid token transfer");
     eosio_assert(quantity.amount > 0, "Quantity must be positive");
 
-    asset stake_net(0.001, S(4, EOS));
-    asset stake_cpu(0.001, S(4, EOS));
+    asset stake_net(10, S(4, EOS));
+    asset stake_cpu(10, S(4, EOS));
     asset buy_ram = quantity - stake_net - stake_cpu;
     eosio_assert(buy_ram.amount > 0, "Not enough eos to buy ram");
 
@@ -29,24 +29,24 @@ void signupeoseos::transfer(account_name from, account_name to, asset quantity, 
 
     account_name new_account_name = string_to_name(account_name_str.c_str());
 
-    authority owner = authority{
-        .threshold = 1,
-        .keys = {{public_key_type(public_key_str), 1}},
-        .accounts = {},
-        .waits = {}
-    };
-    newaccount new_account = newaccount{
-        .creator = _self,
-        .name = new_account_name,
-        .owner = owner,
-        .active = owner
-    };
-    action(
-            permission_level{ _self, N(active) },
-            N(eosio),
-            N(newaccount),
-            new_account
-    ).send();
+//    authority owner = authority{
+//        .threshold = 1,
+//        .keys = {{public_key(public_key_str), 1}},
+//        .accounts = {},
+//        .waits = {}
+//    };
+//    newaccount new_account = newaccount{
+//        .creator = _self,
+//        .name = new_account_name,
+//        .owner = owner,
+//        .active = owner
+//    };
+//    action(
+//            permission_level{ _self, N(active) },
+//            N(eosio),
+//            N(newaccount),
+//            new_account
+//    ).send();
 
     action(
             permission_level{ _self, N(active)},

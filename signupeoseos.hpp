@@ -5,11 +5,22 @@
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/types.hpp>
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/contract_types.hpp>
+#include <eosio.system/native.hpp>
+//#include <eosio/chain/types.hpp>
+//#include <eosio/chain/authority.hpp>
+//#include <eosio/chain/contract_types.hpp>
 
 using namespace eosio;
+
+class signup_public_key {
+public:
+    uint32_t        type;
+    std::array<char,33> data;
+
+    explicit signup_public_key(const std::string& base58str) {
+
+    }
+};
 
 class signupeoseos: public contract {
 public:
@@ -17,14 +28,18 @@ public:
     void transfer(account_name from, account_name to, asset quantity, std::string memo);
 private:
 //    struct key_weight {
-//        std::string key;
+//        public_key key;
+//        uint16_t weight;
+//    };
+//    struct wait_weight {
+//        uint32_t wait_sec;
 //        uint16_t weight;
 //    };
 //    struct authority {
 //        uint32_t threshold;
-//        std::vector<key_weight> keys;
-//        std::vector<uint64_t> accounts;
-//        std::vector<uint64_t> waits;
+//        std::vector<eosiosystem::key_weight> keys;
+//        std::vector<eosiosystem::permission_level_weight> accounts;
+//        std::vector<wait_weight> waits;
 //    };
 //    struct newaccount {
 //        account_name creator;
