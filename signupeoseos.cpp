@@ -19,14 +19,17 @@ void signupeoseos::transfer(account_name from, account_name to, asset quantity, 
         return !isspace(ch);
     }).base(), memo.end());
 
-    auto space_pos = memo.find(' ');
-    eosio_assert(space_pos != string::npos, "Account name and other command must be separated with space");
+    auto separator_pos = memo.find(' ');
+    if (separator_pos == string::npos) {
+        separator_pos = memo.find('-');
+    }
+    eosio_assert(separator_pos != string::npos, "Account name and other command must be separated with space or minuses");
 
-    string account_name_str = memo.substr(0, space_pos);
+    string account_name_str = memo.substr(0, separator_pos);
     eosio_assert(account_name_str.length() == 12, "Length of account name should be 12");
     account_name new_account_name = string_to_name(account_name_str.c_str());
 
-    string public_key_str = memo.substr(space_pos + 1);
+    string public_key_str = memo.substr(separator_pos + 1);
     eosio_assert(public_key_str.length() == 53, "Length of publik key should be 53");
 
     string pubkey_prefix("EOS");
@@ -41,8 +44,8 @@ void signupeoseos::transfer(account_name from, account_name to, asset quantity, 
     array<unsigned char,33> pubkey_data;
     copy_n(vch.begin(), 33, pubkey_data.begin());
 
-    asset stake_net(10, S(4, EOS));
-    asset stake_cpu(10, S(4, EOS));
+    asset stake_net(1000, S(4, EOS));
+    asset stake_cpu(1000, S(4, EOS));
     asset buy_ram = quantity - stake_net - stake_cpu;
     eosio_assert(buy_ram.amount > 0, "Not enough eos to buy ram");
 
