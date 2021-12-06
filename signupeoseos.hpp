@@ -2,18 +2,26 @@
 // Created by Hongbo Tang on 2018/7/5.
 //
 
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/asset.hpp>
-#include <eosiolib/types.hpp>
-#include <eosiolib/action.hpp>
-
+#include <eosio/eosio.hpp>
+#include <eosio/asset.hpp>
+//#include <eosiolib/types.hpp>
+#include <eosio/action.hpp>
+#include <eosio/symbol.hpp>
+#include <eosio/crypto.hpp>
+#include <cstring>
 using namespace eosio;
 using namespace std;
 
-class signupeoseos: public contract {
+typedef int64_t weight_type;
+#define CORE_SYMBOL symbol("WAX",8)
+
+CONTRACT signupeoseos: public contract {
 public:
-    signupeoseos(account_name self): contract(self){};
-    void transfer(account_name from, account_name to, asset quantity, string memo);
+
+    signupeoseos(name receiver, name code, datastream<const char*> ds): contract(receiver, code, ds){};
+
+
+    ACTION transfer(name from, name to, asset quantity, string memo);
 private:
     struct signup_public_key {
         uint8_t        type;
@@ -38,32 +46,13 @@ private:
         vector<wait_weight> waits;
     };
     struct newaccount {
-        account_name creator;
-        account_name name;
+        name creator;
+        name name;
         authority owner;
         authority active;
     };
 };
 
-#define EOSIO_ABI_EX( TYPE, MEMBERS ) \
-extern "C" { \
-    void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
-        auto self = receiver; \
-        if( action == N(onerror)) { \
-            /* onerror is only valid if it is for the "eosio" code account and authorized by "eosio"'s "active permission */ \
-            eosio_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account"); \
-        } \
-        if((code == N(eosio.token) && action == N(transfer)) ) { \
-            TYPE thiscontract( self ); \
-            switch( action ) { \
-                EOSIO_API( TYPE, MEMBERS ) \
-            } \
-         /* does not allow destructor of thiscontract to run: eosio_exit(0); */ \
-        } \
-    } \
-} \
-
-EOSIO_ABI_EX(signupeoseos, (transfer))
 
 // Copied from https://github.com/bitcoin/bitcoin
 
