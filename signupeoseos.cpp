@@ -2,98 +2,101 @@
 // Created by Hongbo Tang on 2018/7/5.
 //
 
-#include "signupeoseos.hpp"
+#include "include/signupeoseos.hpp"
+#include "include/abieos_numeric.hpp"
 
-void signupeoseos::transfer(account_name from, account_name to, asset quantity, string memo) {
+void signupeoseos::hi( name user ){
+    print( "Hello, ", user);
+}
+
+
+void signupeoseos::transfer(name from, name to, asset quantity, string memo) {
     if (from == _self || to != _self) {
         return;
     }
-    eosio_assert(quantity.symbol == string_to_symbol(4, "EOS"), "signupeoseos only accepts EOS for signup eos account");
-    eosio_assert(quantity.is_valid(), "Invalid token transfer");
-    eosio_assert(quantity.amount > 0, "Quantity must be positive");
+    check(quantity.symbol == CORE_SYMBOL, "signupeoseos only accepts CORE for signup eos account");
+    check(quantity.is_valid(), "Invalid token transfer");
+    check(quantity.amount > 0, "Quantity must be positive");
 
-    memo.erase(memo.begin(), find_if(memo.begin(), memo.end(), [](int ch) {
-        return !isspace(ch);
-    }));
-    memo.erase(find_if(memo.rbegin(), memo.rend(), [](int ch) {
-        return !isspace(ch);
-    }).base(), memo.end());
+    check(memo.length() == 120 || memo.length() == 66, "Malformed Memo (not right length)");
 
-    auto separator_pos = memo.find(' ');
-    if (separator_pos == string::npos) {
-        separator_pos = memo.find('-');
+    check(memo[12] == ':' || memo[12] == '-', "Malformed Memo [12] == : or -");
+
+    array<char, 33> owner_pubkey_char;
+    array<char, 33> active_pubkey_char;
+    const string owner_key_str = memo.substr(13, 53);
+    string active_key_str;
+    if(memo[66] == ':' || memo[66] == '-') {
+        // active key provided
+        active_key_str = memo.substr(67, 53);
+    } else {
+        // active key is the same as owner
+        active_key_str =  owner_key_str;
     }
-    eosio_assert(separator_pos != string::npos, "Account name and other command must be separated with space or minuses");
 
-    string account_name_str = memo.substr(0, separator_pos);
-    eosio_assert(account_name_str.length() == 12, "Length of account name should be 12");
-    account_name new_account_name = string_to_name(account_name_str.c_str());
+    const abieos::public_key owner_pubkey =
+            abieos::string_to_public_key(owner_key_str);
+    const abieos::public_key active_pubkey =
+            abieos::string_to_public_key(active_key_str);
 
-    string public_key_str = memo.substr(separator_pos + 1);
-    eosio_assert(public_key_str.length() == 53, "Length of publik key should be 53");
+    copy(owner_pubkey.data.begin(), owner_pubkey.data.end(),
+         owner_pubkey_char.begin());
 
-    string pubkey_prefix("EOS");
-    auto result = mismatch(pubkey_prefix.begin(), pubkey_prefix.end(), public_key_str.begin());
-    eosio_assert(result.first == pubkey_prefix.end(), "Public key should be prefix with EOS");
-    auto base58substr = public_key_str.substr(pubkey_prefix.length());
+    copy(active_pubkey.data.begin(), active_pubkey.data.end(),
+         active_pubkey_char.begin());
 
-    vector<unsigned char> vch;
-    eosio_assert(decode_base58(base58substr, vch), "Decode pubkey failed");
-    eosio_assert(vch.size() == 37, "Invalid public key");
+    const name new_name(memo.substr(0, 12).c_str());
 
-    array<unsigned char,33> pubkey_data;
-    copy_n(vch.begin(), 33, pubkey_data.begin());
-
-    asset stake_net(1000, S(4, EOS));
-    asset stake_cpu(1000, S(4, EOS));
+    asset stake_net(20000000, CORE_SYMBOL);
+    asset stake_cpu(20000000, CORE_SYMBOL);
     asset buy_ram = quantity - stake_net - stake_cpu;
-    eosio_assert(buy_ram.amount > 0, "Not enough eos to buy ram");
+    check(buy_ram.amount > 0, "Not enough balance to buy ram");
 
-    signup_public_key pubkey = {
-        .type = 0,
-        .data = pubkey_data,
+    auto get_auth = [](array<char, 33>& pubkey_char)
+    {
+        return authority{
+                .threshold = 1,
+                .keys = {
+                        key_weight{
+                                .key = signup_public_key{
+                                        .type = (uint8_t)abieos::key_type::k1,
+                                        .data = pubkey_char,
+                                },
+                                .weight = 1
+                        }
+                },
+                .accounts = {},
+                .waits = {}
+        };
     };
-    key_weight pubkey_weight = {
-        .key = pubkey,
-        .weight = 1,
-    };
-    authority owner = authority{
-        .threshold = 1,
-        .keys = {pubkey_weight},
-        .accounts = {},
-        .waits = {}
-    };
-    authority active = authority{
-        .threshold = 1,
-        .keys = {pubkey_weight},
-        .accounts = {},
-        .waits = {}
-    };
+    authority owner_auth = get_auth(owner_pubkey_char);
+    authority active_auth = get_auth(active_pubkey_char);
+
     newaccount new_account = newaccount{
         .creator = _self,
-        .name = new_account_name,
-        .owner = owner,
-        .active = active
+        .name = new_name,
+        .owner = owner_auth,
+        .active = active_auth
     };
 
     action(
-            permission_level{ _self, N(active) },
-            N(eosio),
-            N(newaccount),
+            permission_level{ _self, name("active") },
+            name("eosio"),
+            name("newaccount"),
             new_account
     ).send();
 
     action(
-            permission_level{ _self, N(active)},
-            N(eosio),
-            N(buyram),
-            make_tuple(_self, new_account_name, buy_ram)
+            permission_level{ _self, name("active")},
+            name("eosio"),
+            name("buyram"),
+            make_tuple(_self, new_name, buy_ram)
     ).send();
 
     action(
-            permission_level{ _self, N(active)},
-            N(eosio),
-            N(delegatebw),
-            make_tuple(_self, new_account_name, stake_net, stake_cpu, true)
+            permission_level{ _self, name("active")},
+            name("eosio"),
+            name("delegatebw"),
+            make_tuple(_self, new_name, stake_net, stake_cpu, true)
     ).send();
 }

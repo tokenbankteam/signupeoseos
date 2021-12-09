@@ -3,3 +3,4 @@ CMakeLists.txt
 cmake-build-debug
 *.wast
 *.wasm
+.vscode/settings.json
